@@ -1,0 +1,62 @@
+#!/usr/bin/env gorun
+
+package main
+
+import (
+	"log"
+	"os"
+	"os/exec"
+)
+
+const KEY_CGO_ENABLED = "CGO_ENABLED"
+const KEY_GOOS = "GOOS"
+const KEY_GOARCH = "GOARCH"
+
+var lastCGOEnabled = os.Getenv("CGO_ENABLED")
+var lastGoos = os.Getenv("GOOS")
+var lastGoArch = os.Getenv("GOARCH")
+
+func noti()  {
+	log.Printf("You must specify the build platform: [windows, linux, darwin]")
+	os.Exit(-1)
+}
+
+func contains(goos string) {
+	platforms := []string{"windows", "linux", "darwin"}
+    for _, v := range platforms {
+        if goos == v {
+            return
+        }
+    }
+	noti()
+}
+
+func storeBuildEnv(goos string)  {
+	os.Setenv(KEY_CGO_ENABLED, "0")
+	os.Setenv(KEY_GOOS, goos)
+	os.Setenv(KEY_GOARCH, "amd64")
+}
+
+func restoreBuildEnv()  {
+	os.Setenv(KEY_CGO_ENABLED, lastCGOEnabled)
+	os.Setenv(KEY_GOOS, lastGoos)
+	os.Setenv(KEY_GOARCH, lastGoArch)
+}
+
+func main() {
+	var goos string
+	if len(os.Args) > 1 {
+		goos = os.Args[1]
+		contains(goos)
+	} else {
+		noti()
+	}
+
+	storeBuildEnv(goos)
+	defer restoreBuildEnv()
+
+	cmd := exec.Command("go", "build")
+	log.Printf("Start build project on %s, please waiting...", goos)
+	err := cmd.Run()
+	log.Printf("Command finished with error: %v", err)
+}
